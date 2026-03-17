@@ -2,6 +2,14 @@ from fastapi import FastAPI, HTTPException
 from backend.models import OutreachRequest, OutreachResponse
 from backend.graph import outreach_graph
 
+from dotenv import load_dotenv
+load_dotenv() # This forces Python to read your .env file
+
+from fastapi import FastAPI, HTTPException
+from backend.models import OutreachRequest, OutreachResponse
+from backend.graph import outreach_graph
+
+# ... rest of your code ...
 app = FastAPI(title="Autonomous Cold Outreach System", version="1.0.0")
 
 @app.get("/")
