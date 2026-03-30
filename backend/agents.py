@@ -2,6 +2,16 @@ import os
 from langchain_groq import ChatGroq
 from backend.models import AgentState, CompanyDNA
 
+def _require_groq_key() -> str:
+    """Raise a descriptive error at call-time (not import-time) if the key is absent."""
+    key = os.getenv("GROQ_API_KEY")
+    if not key:
+        raise ValueError(
+            "GROQ_API_KEY environment variable is not set. "
+            "Add it to your Railway service variables before deploying."
+        )
+    return key
+
 STRATEGIST_SYSTEM_PROMPT = """You are a ruthless sales strategist. 
 
 Inputs provided:
@@ -54,7 +64,10 @@ Kishan
 """
 
 # FIX: Lowered temperature from 0.7 to 0.3 to force strict constraint adherence.
+# FIX: Key is validated at call-time so a missing key is caught by the background
+#      task's try/except and surfaces as job status="failed", not a server crash.
 def get_llm():
+    _require_groq_key()
     return ChatGroq(
         model="llama-3.3-70b-versatile",
         temperature=0.3, 

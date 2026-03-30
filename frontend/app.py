@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 import streamlit as st
@@ -8,8 +9,9 @@ st.set_page_config(page_title="Autonomous Cold Outreach System", page_icon="📧
 st.title("Autonomous Cold Outreach System 🚀")
 st.markdown("Generate hyper-personalized, high-conversion cold emails using AI agents.")
 
-# Config
-BASE_URL = "http://localhost:8000"
+# Config — set BACKEND_URL in Railway env vars to point to the backend service.
+# Falls back to localhost for local development.
+BASE_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 
 # Input Form
 with st.form("input_form"):
