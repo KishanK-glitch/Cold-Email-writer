@@ -2,24 +2,71 @@ import os
 from langchain_groq import ChatGroq
 from backend.models import AgentState, CompanyDNA
 
-# Use llama-3.3-70b-versatile via Groq as requested
+STRATEGIST_SYSTEM_PROMPT = """You are a ruthless sales strategist. 
+
+Inputs provided:
+1. Company DNA (Value prop, target audience, recent news).
+2. The User's Offering.
+
+Your objective: Write a single, highly specific, one-sentence "Hook". 
+The hook must connect ONE specific pain point or recent initiative from the Company DNA directly to the User's Offering.
+
+STRICT CONSTRAINTS:
+- Output ONLY the raw text of the single-sentence hook. 
+- DO NOT output any conversational filler. 
+- DO NOT say "Here is a hook" or "Hook:". 
+- Keep it under 20 words. No buzzwords."""
+
+COPYWRITER_SYSTEM_PROMPT = """You are a founder writing a quick text-like email to another busy executive. 
+Your writing is ruthlessly concise, casual, and direct. You write exactly like the examples provided.
+
+Inputs provided:
+1. The Target Company URL.
+2. The Strategic Hook (The reason you are reaching out).
+
+Your objective: Write a Subject Line and a 3-sentence cold email based on the hook.
+
+STRICT CONSTRAINTS:
+1. Banned Words: leverage, amplify, synergy, seamless, cutting-edge, innovative, delve, unlock, elevate, streamline, comprehensive.
+2. Banned Phrases: "I hope this finds you well", "My name is", "I am reaching out because", "I would love to".
+3. Structure: 
+   - Sentence 1: The Observation (Based strictly on the hook).
+   - Sentence 2: The Value (What you do/The offering).
+   - Sentence 3: The Soft CTA (A low-friction question).
+4. Tone: 8th-grade reading level. Start the email immediately without a "Hi [Name]" if possible. 
+5. Output format: You must include "Subject: [your subject]" at the top. Use all-lowercase for the subject line.
+
+EXAMPLES OF PERFECT OUTPUT:
+
+Subject: your recent launch
+Saw the news about the recent product launch. Looks solid.
+We built a system that automates the backend lead routing for launches like this so sales doesn't drop the ball.
+Worth a quick chat to see if it fits your current stack?
+Best,
+Kishan
+
+Subject: scaling outbound
+Noticed you're ramping up outbound efforts this quarter.
+I build custom AI agents that handle the initial research and drafting, usually cutting rep time by about 60%.
+Are you currently exploring anything like this?
+Cheers,
+Kishan
+"""
+
+# FIX: Lowered temperature from 0.7 to 0.3 to force strict constraint adherence.
 def get_llm():
     return ChatGroq(
         model="llama-3.3-70b-versatile",
-        temperature=0.7,
+        temperature=0.3, 
         max_tokens=1024
     )
 
 def researcher_node(state: AgentState):
-    """
-    Analyzes the scraped markdown and extracts the Company DNA.
-    """
     content = state.get("scraped_content", "")
     if not content:
         return {"error": "No scraped content available."}
     
     llm = get_llm()
-    # Structured output for Company DNA
     structured_llm = llm.with_structured_output(CompanyDNA)
     
     prompt = f"""
@@ -41,10 +88,6 @@ def researcher_node(state: AgentState):
 
 
 def strategist_node(state: AgentState):
-    """
-    Maps the user's offering to the specific pain points found by the Researcher.
-    Identifies the 'Hook'.
-    """
     dna: CompanyDNA = state.get("company_dna")
     offering = state.get("user_offering", "")
     
@@ -52,18 +95,16 @@ def strategist_node(state: AgentState):
         return {"error": "Missing Company DNA or User Offering."}
     
     llm = get_llm()
-    prompt = f"""
-    You are an expert sales strategist.
-    
-    Client's Offering: {offering}
-    
-    Target Company DNA:
-    - Value Proposition: {dna.value_proposition}
-    - Target Audience: {dna.target_audience}
-    - Recent News/Updates: {dna.recent_news}
-    
-    Your task: Formulate a single, highly compelling 1-2 sentence "Hook" that directly connects the Client's Offering to the Target Company's specific context or recent news. The hook should identify a potential pain point or growth opportunity.
-    """
+    prompt = f"""{STRATEGIST_SYSTEM_PROMPT}
+
+---
+Client's Offering: {offering}
+
+Target Company DNA:
+- Value Proposition: {dna.value_proposition}
+- Target Audience: {dna.target_audience}
+- Recent News/Updates: {dna.recent_news}
+"""
     
     try:
         response = llm.invoke(prompt)
@@ -73,31 +114,19 @@ def strategist_node(state: AgentState):
 
 
 def copywriter_node(state: AgentState):
-    """
-    Writes the final email based on the hook and constraints.
-    """
     hook = state.get("hook", "")
-    offering = state.get("user_offering", "")
+    url = state.get("url", "")
     
     if not hook:
         return {"error": "Missing Hook."}
     
     llm = get_llm()
-    prompt = f"""
-    You are an elite B2B copywriter. Write a cold email using the following components:
-    
-    Client's Offering: {offering}
-    Strategic Hook: {hook}
-    
-    STRICT CONSTRAINTS:
-    1. No "I hope this finds you well" or any generic greetings.
-    2. NO FLUFF.
-    3. Maximum 3-4 sentences total.
-    4. Must include a clear, low-friction Call to Action (CTA).
-    5. Tone: Peer-to-peer, professional, not a bot.
-    
-    Output ONLY the email body (you can include a subject line at the top labeled "Subject: "). Nothing else.
-    """
+    prompt = f"""{COPYWRITER_SYSTEM_PROMPT}
+
+---
+Target Company URL: {url}
+Strategic Hook: {hook}
+"""
     
     try:
         response = llm.invoke(prompt)
