@@ -106,3 +106,57 @@ async def get_status(job_id: str):
         email_output=job.get("email_output"),
         output_hash=job.get("output_hash"),
     )
+# ─── Sokosumi Marketplace Endpoints (MIP-003 UI Requirements) ──────────────
+
+@app.get("/manifest")
+def get_manifest():
+    """Tells Sokosumi what this agent is and where its payment node lives."""
+    return {
+        "name": "Autonomous Cold Outreach Agent",
+        "version": "1.0.0",
+        "description": "Automated B2B cold outreach agent that researches company websites and drafts personalized emails.",
+        "author": "Kishan K",
+        "endpoints": {
+            "interact": "/start_job",
+            "result": "/status"
+        },
+        "payment": {
+            "payment_node_url": os.getenv("MASUMI_PAYMENT_NODE_URL", "https://masumi-payment-service-production-c71c.up.railway.app")
+        }
+    }
+
+@app.get("/schema")
+def get_schema():
+    """Tells Sokosumi exactly what UI buttons and text boxes to draw."""
+    return {
+        "title": "Cold Outreach Agent Schema",
+        "type": "object",
+        "properties": {
+            "input": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "title": "Target Company URL",
+                        "description": "The website of the company you want to pitch."
+                    },
+                    "user_offering": {
+                        "type": "string",
+                        "title": "Your Offering",
+                        "description": "A brief description of the product or service you are selling."
+                    }
+                },
+                "required": ["url", "user_offering"]
+            },
+            "output": {
+                "type": "object",
+                "properties": {
+                    "email_output": {
+                        "type": "string",
+                        "title": "Drafted Email",
+                        "description": "The personalized cold outreach email."
+                    }
+                }
+            }
+        }
+    }
