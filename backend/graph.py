@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, END
 from backend.models import AgentState
 from backend.utils import scrape_url
-from backend.agents import researcher_node, strategist_node, copywriter_node
+from backend.agent import researcher_node, strategist_node, copywriter_node
 
 def scrape_node(state: AgentState):
     url = state.get("url")
