@@ -1,6 +1,9 @@
 from masumi import run
 from agent import process_job
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 # This strictly follows the Masumi SDK schema format
 INPUT_SCHEMA = {
     "input_data": [
